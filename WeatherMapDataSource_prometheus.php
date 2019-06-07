@@ -1,5 +1,18 @@
 <?php
 // Pluggable datasource for PHP Weathermap 0.9
+// - return values from prometheus
+
+// for interfaces scraped via node_exporter
+// prometheus:instance:interface
+// Example: TARGET prometheus:suede0.hamburg.freifunk.net:ens2.310
+
+// for interfaces scraped via snmp_exporter
+// the label to match the interface name with has to be given:
+// prometheus:instance:interface:label
+// Example: TARGET prometheus:192.168.112.30:ath0:ifDescr
+
+<?php
+// Pluggable datasource for PHP Weathermap 0.9
 // - return a static value
 
 // TARGET static:10M
@@ -25,8 +38,13 @@ class WeatherMapDataSource_prometheus extends WeatherMapDataSource {
 		$router = $parts[1];
 		$device = $parts[2];
 
-		$query_rx = "irate(node_network_receive_bytes{instance='$router:9100',device='$device'}[5m])";
-		$query_tx = "irate(node_network_transmit_bytes{instance='$router:9100',device='$device'}[5m])";
+		if (count($parts) > 3) {
+			$query_rx = "irate(ifInOctets{instance='$router',$parts[3]='$device'}[10m])";
+			$query_tx = "irate(ifOutOctets{instance='$router',$parts[3]='$device'}[10m])";
+		} else {
+			$query_rx = "irate(node_network_receive_bytes_total{instance='$router:9100',device='$device'}[5m])";
+			$query_tx = "irate(node_network_transmit_bytes_total{instance='$router:9100',device='$device'}[5m])";
+		}
 
 		$rx_rate = $this->prometheus_query($query_rx) * 8;
 		$tx_rate = $this->prometheus_query($query_tx) * 8;
